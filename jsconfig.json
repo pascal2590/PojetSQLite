@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "expo-sqlite": ["node_modules/expo-sqlite"]
+      }
+    },
+    "exclude": ["node_modules", ".expo", ".vscode"]
+  }
+  
