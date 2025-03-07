@@ -1,3 +1,3 @@
 # PojetSQLite
 
-Exerecice final du cours "Utiliser une base données locale : SQLite".
+Exercice final du cours "Utiliser une base données locale : SQLite".
