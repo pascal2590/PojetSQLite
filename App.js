@@ -4,8 +4,7 @@ import Constants from "expo-constants";
 import * as SQLite from "expo-sqlite";
 import { ScrollView } from "react-native-gesture-handler";
 
-// Ouvre la base de données
-const db = SQLite.openDatabaseSync("test.db");
+const db = SQLite.openDatabase("test.db");
 
 export default function App() {
   const [productsList, setProductsList] = React.useState([]);
@@ -13,8 +12,9 @@ export default function App() {
   const [elementsInWishlist, setElementsInWishlist] = React.useState([]);
   const [forcedUpdateId, forceUpdate] = useForceUpdate();
 
-  // Code d'initialisation des tables
+  // Ce code permet d'initialiser les tables au lancement de l'application
   useEffect(() => {
+    // Active le mode clé étrangère
     db.exec([{ sql: "PRAGMA foreign_keys = ON;", args: [] }], false, () =>
       console.log("Foreign keys turned on")
     );
@@ -22,18 +22,21 @@ export default function App() {
     db.transaction(tableCreationTransaction);
   }, []);
 
-  // Code pour récupérer les données
+  // Récupère via une requete SQL les données quand forceUpdatedId change (déclenché manuellement)
   useEffect(() => {
     db.transaction((tx) => {
+      // Récupère la liste des produits
       tx.executeSql("select * from Products", [], (_, result) => {
         setProductsList(result.rows._array);
       });
 
+      // Récupère la liste
       tx.executeSql("select * from WishLists;", [], (_, result) => {
-        setWhishList(result.rows._array.pop());
+        setWhishList(result.rows._array.pop()); // Get first one
       });
 
       if (wishList) {
+        // Récupère la liste des éléments dans la liste
         tx.executeSql(
           "select * from WhishList_Products W WHERE whishlist_id = ?;",
           [wishList.id],
@@ -45,6 +48,7 @@ export default function App() {
     });
   }, [forcedUpdateId, wishList]);
 
+
   return (
     <View style={styles.container}>
       <Button
@@ -52,7 +56,7 @@ export default function App() {
         title={isNil(wishList) ? "Cliquez pour initialiser" : "Déjà initialisé"}
         onPress={() => {
           db.transaction((t) => {
-            // Création de produits
+            // On créé 3 produits
             [1, 2, 3].forEach(
               (el) =>
                 t.executeSql(
@@ -63,16 +67,16 @@ export default function App() {
               (e) => console.log("Error on products creation", e)
             );
 
-            // Création d'un utilisateur
+            // On créé l'utilisateur
             t.executeSql(
               "INSERT INTO Users (first_name, last_name, email) VALUES (?, ?, ?);",
               ["Andréas", "HANSS", "contact@codingspark.io"],
               (result) => {
                 console.log("Users Created");
-                // Création de la Wishlist
+                // Create WhishList for user
                 t.executeSql(
                   "INSERT INTO WishLists (owner_id, title, creation_date) VALUES (?, ?, ?);",
-                  [1, "La liste d'Andréas", Date.now()],
+                  [1, "La liste d'andréas", Date.now()], // On met 1 en dur car on sait que c'est le premier dans notre cas, sinon il faudrait récupérer la valeur de l'ID
                   () => console.log("Whishlist created"),
                   (e) => console.log("Error on wishlist creation", e)
                 );
@@ -80,6 +84,7 @@ export default function App() {
               (e) => console.log("Error on Users creation", e)
             );
 
+            // Si tout se passe bien, on utilise forceUpdate qui va incrémenter un compteur et donc déclencher notre hook qui va refaire la requete SQL
             forceUpdate();
           });
         }}
@@ -122,6 +127,7 @@ const ObjectLine = (props) => {
           title={props.isInBucket ? "Enlever" : "Ajouter"}
           onPress={() => {
             db.transaction((tx) => {
+              // Si l'élément est déjà dans la liste on l'enlève sinon on l'ajoute. Dans tous les cas on déclenche un re-rendu
               props.isInBucket
                 ? tx.executeSql(
                     "DELETE FROM WhishList_Products WHERE whishlist_id = ? AND product_id = ?;",
@@ -162,18 +168,19 @@ const styles = StyleSheet.create({
   },
 });
 
+// Fonction utilitaire qui permet de forcer un re-rendu.
 const useForceUpdate = () => {
   const [state, setState] = useState(false);
-  return [state, () => setState(prev => prev + 1)];
+  return [state, () => setState(prev => prev+1)];
 };
 
-const isNil = (value) => typeof value === "undefined" || value === null;
+const isNil = (value) => typeof value === "undefined" || value === null
 
-const randomIntFromInterval = (min, max) => {
+const randomIntFromInterval = (min, max) => { // min and max included 
   return Math.floor(Math.random() * (max - min + 1) + min);
-};
+}
 
-const tableCreationTransaction = (t) => {
+const tableCreationTransaction  =(t) => {
   t.executeSql(
     "CREATE TABLE IF NOT EXISTS Users (id INTEGER PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, email TEXT NOT NULL UNIQUE);",
     [],
@@ -199,4 +206,4 @@ const tableCreationTransaction = (t) => {
     () => console.log("Table WhishList_Products created"),
     (e) => console.warn("Table WhishList_Products error", e)
   );
-};
+}
